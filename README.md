@@ -3,10 +3,14 @@ Curso introductorio a React
 
 ## 📚 Documentación Importante
 
-Este repositorio está siguiendo una estrategia de desarrollo basada en GitFlow. Si necesitas información sobre:
+Este repositorio está siguiendo una estrategia de desarrollo basada en GitFlow. 
 
-- **Cómo hacer Pull Requests**: Lee [GUIA_PULL_REQUESTS.md](./GUIA_PULL_REQUESTS.md)
-- **Ramas pendientes y recomendaciones**: Lee [GUIA_PULL_REQUESTS.md](./GUIA_PULL_REQUESTS.md)
+### 🚀 Inicio Rápido
+- **¿Quieres empezar YA?**: Lee [INICIO_RAPIDO.md](./INICIO_RAPIDO.md) (5 minutos)
+
+### 📖 Documentación Completa
+- **Plan paso a paso**: Lee [PLAN_DE_ACCION.md](./PLAN_DE_ACCION.md) (15-25 minutos)
+- **Guía completa de Pull Requests**: Lee [GUIA_PULL_REQUESTS.md](./GUIA_PULL_REQUESTS.md)
 
 ### ⚠️ Ramas Pendientes de Mergear
 

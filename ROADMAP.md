@@ -436,8 +436,8 @@ src/
 ## ✅ Estado Actual
 
 **Fase actual:** Fase 3 - Funcionalidades Avanzadas
-**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅
-**Siguiente paso:** Implementar estados de carga y errores (skeleton loaders, empty states).
+**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — PR abierto hacia `main` ✅
+**Siguiente paso:** Implementar estados de carga y errores — paso 7 (skeleton loaders, empty states, error handling).
 
 ---
 
@@ -449,4 +449,4 @@ src/
 
 ---
 
-**Última actualización:** 27 de Mayo, 2026
+**Última actualización:** 27 de Mayo, 2026 — PR `feature/04-estados-eventos` → `main` abierto

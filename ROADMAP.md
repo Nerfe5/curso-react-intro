@@ -376,13 +376,225 @@ src/
 
 ---
 
-### 7. Estados de Carga y Errores
+### 6.3 Stateless vs Stateful ✅
+
 - **Objetivos:**
-  - Simular carga asíncrona de datos
-  - Implementar skeleton loaders
-  - Manejo de estados vacíos y errores
-- **UX:** Loading states, empty states, error handling
-- **Duración estimada:** 2-3 horas
+  - Entender la diferencia entre componentes con lógica y componentes de presentación
+  - Separar `App.js` en dos archivos con responsabilidades claras
+  - Facilitar la navegación y el mantenimiento del proyecto
+
+**Conceptos aprendidos:**
+
+**¿Qué es un componente Stateful?**
+Un componente Stateful (con estado) es el que tiene cerebro: maneja estado, contiene lógica de negocio y toma decisiones. Orquesta qué datos existen y cómo cambian:
+```jsx
+// App.js — STATEFUL: el "cerebro"
+function App() {
+  const [todos, saveTodos] = useLocalStorage('TODOS_V1', []);
+  const [searchValue, setSearchValue] = React.useState('');
+
+  // lógica: cómo se filtra
+  const searchedTodos = todos.filter((todo) =>
+    todo.text.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  // lógica: cómo se completa un TODO
+  const completeTodo = (text) => {
+    const newTodos = [...todos];
+    const todoIndex = newTodos.findIndex((todo) => todo.text === text);
+    newTodos[todoIndex].completed = true;
+    saveTodos(newTodos);
+  };
+
+  // solo renderiza AppUI, le pasa todo como props
+  return <AppUI completeTodo={completeTodo} searchedTodos={searchedTodos} ... />;
+}
+```
+
+**¿Qué es un componente Stateless?**
+Un componente Stateless (sin estado) es la "cara": no toma decisiones, no tiene estado propio. Solo recibe datos por props y los muestra en pantalla. Si le cambias las props, cambia lo que se ve:
+```jsx
+// AppUI.js — STATELESS: la "cara"
+function AppUI({ completedTodos, totalTodos, searchValue, setSearchValue, searchedTodos, completeTodo, deleteTodo }) {
+  return (
+    <React.Fragment>
+      <div className="todo-container">
+        <TodoCounter completed={completedTodos} total={totalTodos} />
+        <TodoSearch searchValue={searchValue} setSearchValue={setSearchValue} />
+        <TodoList>
+          {searchedTodos.map(todo => (
+            <TodoItem key={todo.text} text={todo.text} completed={todo.completed}
+              onComplete={() => completeTodo(todo.text)}
+              onDelete={() => deleteTodo(todo.text)}
+            />
+          ))}
+        </TodoList>
+      </div>
+      <CreateTodoButton />
+    </React.Fragment>
+  );
+}
+```
+> `AppUI` no sabe de dónde vienen los datos ni cómo se guardan. Solo sabe pintarlos.
+
+**¿Cómo quedaron divididas las responsabilidades?**
+
+| Componente | Tipo | Responsabilidad |
+|---|---|---|
+| `App.js` | Stateful | Estado, lógica, filtrado, persistencia |
+| `AppUI.js` | Stateless | JSX, estructura visual, delegación de eventos |
+| `TodoCounter` | Stateless | Mostrar conteo de TODOs |
+| `TodoSearch` | Stateless | Input de búsqueda |
+| `TodoList` | Stateless | Contenedor de lista |
+| `TodoItem` | Stateless | Item individual de tarea |
+| `CreateTodoButton` | Stateless | Botón de acción |
+
+**¿Por qué aplicar este patrón?**
+La separación tiene tres beneficios concretos:
+
+1. **Navegación clara:** si hay un bug de datos o lógica → `App.js`. Si el problema es visual → `AppUI.js` o el componente específico.
+2. **Componentes reutilizables:** `AppUI` podría usarse con distintas fuentes de datos (localStorage, API, etc.) sin tocar el JSX.
+3. **Testing más fácil:** los componentes stateless son funciones puras — dado un set de props, siempre devuelven el mismo JSX. Son triviales de testear.
+
+**Estructura final del proyecto con esta separación**
+```
+src/
+├── App.js       ← STATEFUL: estado + lógica de negocio
+├── AppUI.js     ← STATELESS: JSX + estructura visual
+├── App.css
+├── useLocalStorage/
+├── TodoCounter/
+├── TodoSearch/
+├── TodoList/
+├── TodoItem/
+└── CreateTodoButton/
+```
+
+> Regla práctica: si necesitas encontrar por qué algo falla en los datos → `App.js`. Si necesitas ajustar cómo se ve algo en pantalla → `AppUI.js` o el componente de la carpeta correspondiente.
+
+---
+
+### 7. Estados de Carga y Errores ✅
+
+- **Objetivos:**
+  - Simular carga asíncrona de datos con `useEffect` + `setTimeout`
+  - Manejar estados de carga, error y lista vacía en la UI
+  - Implementar skeleton loaders (siguiente paso)
+
+**Conceptos aprendidos:**
+
+**`useEffect` — sincronizar con el mundo exterior**
+`useEffect` es el hook que le dice a React: "ejecuta esto *después* de que el componente se pinte". Se usa para efectos secundarios: leer APIs, timers, localStorage. Recibe dos argumentos: la función a ejecutar y el array de dependencias:
+
+```js
+// Sin array: corre después de CADA render (peligroso en bucles)
+React.useEffect(() => { console.log('después de cada render'); });
+
+// Array vacío []: corre UNA sola vez, al montar el componente
+React.useEffect(() => { console.log('solo al montar'); }, []);
+
+// Con dependencias: corre cada vez que cambia `totalTodos`
+React.useEffect(() => { console.log('cambió totalTodos'); }, [totalTodos]);
+```
+
+> Regla práctica: `[]` es para carga inicial (fetch de datos, leer localStorage). Con dependencias es para reaccionar a cambios específicos.
+
+**Simular carga asíncrona con `setTimeout`**
+Para practicar estados de carga sin una API real, se usa `setTimeout` dentro de `useEffect`:
+
+```js
+React.useEffect(() => {
+  setTimeout(() => {
+    try {
+      const localStorageItem = localStorage.getItem(itemName);
+      // ... leer y parsear datos ...
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      setError(true);
+    }
+  }, 2000); // simula 2 segundos de red
+}, []);
+```
+
+**Los tres estados de una carga de datos**
+Cualquier operación asíncrona tiene tres estados que la UI debe cubrir:
+
+| Estado | Variable | Qué mostrar |
+|---|---|---|
+| Cargando | `loading: true` | Indicador / skeleton |
+| Error | `error: true` | Mensaje de error |
+| Vacío | `todos.length === 0` | Mensaje "crea tu primer TODO" |
+| Con datos | normal | La lista de TODOs |
+
+**Implementación en `useLocalStorage`**
+El hook ahora devuelve un objeto en lugar de un array, para poder nombrar las propiedades sin ambigüedad:
+
+```js
+// Antes (array — el orden importa)
+const [todos, saveTodos] = useLocalStorage('TODOS_V1', []);
+
+// Ahora (objeto — los nombres importan)
+const { item: todos, saveItem: saveTodos, loading, error } = useLocalStorage('TODOS_V1', []);
+```
+
+> La diferencia entre array y objeto en el return es pura conveniencia: el array exige respetar el orden; el objeto permite renombrar con `: ` y da más contexto.
+
+**Renderizado condicional en `AppUI`**
+Los tres estados se manejan con condicionales dentro del `TodoList`:
+
+```jsx
+<TodoList>
+  {loading && <p>Estamos cargando...</p>}
+  {error && <p>Desespérate, hubo un error!!</p>}
+  {(!loading && searchedTodos.length === 0) && <p>¡Crea tu primer TODO!</p>}
+
+  {searchedTodos.map(todo => (
+    <TodoItem key={todo.text} ... />
+  ))}
+</TodoList>
+```
+
+> El operador `&&` en JSX: si la condición izquierda es `false`, React no renderiza nada. Si es `true`, renderiza lo del lado derecho.
+
+**Componentes de estado creados**
+
+Cada estado tiene su propio componente en su carpeta, siguiendo el mismo patrón que el resto del proyecto:
+
+| Componente | Carpeta | Estado que representa |
+|---|---|---|
+| `TodosLoading` | `src/TodosLoading/` | Carga en progreso — skeleton animado |
+| `TodosError` | `src/TodosError/` | Error al cargar los datos |
+| `EmptyTodos` | `src/EmptyTodos/` | Lista vacía — invita a crear el primer TODO |
+
+**Skeleton loader**
+El componente `TodosLoading` imita la forma de un `TodoItem` real (círculo izquierdo, barra de texto, círculo derecho) usando `@keyframes` que alterna entre dos tonos de gris. En `AppUI` se renderizan tres instancias para simular una lista parcial:
+
+```jsx
+{loading && (
+  <>
+    <TodosLoading />
+    <TodosLoading />
+    <TodosLoading />
+  </>
+)}
+```
+
+> Mostrar varios skeletons en lugar de uno da la ilusión de que hay contenido real cargando, lo que reduce la percepción de espera del usuario.
+
+**Estructura final de la sección**
+```
+src/
+├── TodosLoading/
+│   ├── index.js          ← esqueleto animado (3 instancias al cargar)
+│   └── TodosLoading.css  ← @keyframes skeleton-loading
+├── TodosError/
+│   ├── index.js          ← mensaje de error
+│   └── TodosError.css
+└── EmptyTodos/
+    ├── index.js          ← invitación a crear el primer TODO
+    └── EmptyTodos.css
+```
 
 ### 8. Modal para Crear TODOs
 - **Objetivos:**
@@ -392,17 +604,85 @@ src/
 - **Conceptos:** Portals, formularios controlados
 - **Duración estimada:** 3-4 horas
 
+### 8. Context API ⏳ PENDIENTE
+
+- **Objetivos:**
+  - Entender el problema de prop drilling y por qué Context lo resuelve
+  - Crear un contexto con `React.createContext`
+  - Envolver la app en un `Provider` y consumir datos con `useContext`
+  - Mover el estado global de `App.js` al contexto
+
+**Conceptos a aprender:**
+
+**¿Qué es prop drilling?**
+Prop drilling es cuando tienes que pasar una prop por varios niveles de componentes intermedios que no la usan, solo para que llegue a quien la necesita:
+
+```
+App.js  →  (loading, error, todos...)
+  └── AppUI          recibe todo y lo pasa...
+        └── TodoList  recibe todo y lo pasa...
+              └── TodoItem  ← aquí es donde se usa
+```
+
+Cuando la app crece, esto se vuelve difícil de mantener: cualquier cambio obliga a editar todos los componentes del medio.
+
+**`React.createContext` — crear el canal de datos global**
+`createContext` crea un objeto con dos piezas: un `Provider` (quien da los datos) y un `Consumer` (quien los recibe). El `Provider` envuelve los componentes que necesitan acceso:
+
+```jsx
+// TodoContext.js — crear el contexto
+const TodoContext = React.createContext();
+
+// App.js — el Provider envuelve toda la app y le da acceso al estado
+function App() {
+  const { item: todos, saveItem: saveTodos, loading, error } = useLocalStorage('TODOS_V1', []);
+  const [searchValue, setSearchValue] = React.useState('');
+
+  return (
+    <TodoContext.Provider value={{ todos, saveTodos, loading, error, searchValue, setSearchValue }}>
+      <AppUI />
+    </TodoContext.Provider>
+  );
+}
+```
+
+**`useContext` — consumir datos sin props**
+Cualquier componente dentro del `Provider` puede leer el contexto directamente, sin que nadie le pase props:
+
+```jsx
+// TodoItem/index.js — accede al contexto sin recibir ninguna prop
+function TodoItem({ text, completed }) {
+  const { completeTodo, deleteTodo } = React.useContext(TodoContext);
+
+  return (
+    <li>
+      <span onClick={() => completeTodo(text)}>✓</span>
+      <p>{text}</p>
+      <span onClick={() => deleteTodo(text)}>✕</span>
+    </li>
+  );
+}
+```
+
+**¿Qué cambia en la arquitectura?**
+
+| Antes (prop drilling) | Después (Context) |
+|---|---|
+| `App` → `AppUI` → `TodoList` → `TodoItem` | `App` ← `TodoItem` accede directo |
+| Cada componente intermedio recibe y reenvía props | Los intermedios no saben nada del estado global |
+| Cambiar una prop obliga a editar múltiples archivos | Un solo `Provider` centraliza todo |
+
 ---
 
 ## **Fase 4: Organización y Deploy** ⏳ PENDIENTE
 
-### 9. Context API
+### 9. Modal para Crear TODOs
 - **Objetivos:**
-  - Evitar prop drilling
-  - Centralizar estado global de la aplicación
-  - Refactorizar componentes para usar Context
-- **Conceptos:** Context, `useContext`, patrones de estado global
-- **Duración estimada:** 4-5 horas
+  - Implementar React Portals
+  - Crear formulario de creación de TODOs
+  - Validación de formularios
+- **Conceptos:** Portals, formularios controlados
+- **Duración estimada:** 3-4 horas
 
 ### 10. Deploy y Optimización
 - **Objetivos:**
@@ -423,8 +703,8 @@ src/
 |------|--------|-------|
 | Fase 1 - Fundamentos | ✅ Completada | React, JSX, Componentes, Props |
 | Fase 2 - TODO Machine | ✅ Completada | Maquetación, useState, Eventos, Filtrado |
-| Fase 3 - Avanzado | 🔄 En curso | useEffect, localStorage ✅, Modal, Portals |
-| Fase 4 - Deploy | ⏳ Pendiente | Context API, GitHub Pages |
+| Fase 3 - Avanzado | 🔄 En curso | useEffect, localStorage ✅, Skeleton loaders ✅, Context API |
+| Fase 4 - Deploy | ⏳ Pendiente | Modal, Portals, GitHub Pages |
 
 - **Duración total estimada:** 25-35 horas
 - **Nivel:** Principiante a Intermedio
@@ -436,8 +716,8 @@ src/
 ## ✅ Estado Actual
 
 **Fase actual:** Fase 3 - Funcionalidades Avanzadas
-**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — PR abierto hacia `main` ✅
-**Siguiente paso:** Implementar estados de carga y errores — paso 7 (skeleton loaders, empty states, error handling).
+**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — Stateless vs Stateful ✅ — useEffect + loading/error states ✅ — Skeleton loaders ✅
+**Siguiente paso:** Context API — paso 8 (`createContext`, `Provider`, `useContext`, eliminar prop drilling).
 
 ---
 
@@ -449,4 +729,4 @@ src/
 
 ---
 
-**Última actualización:** 27 de Mayo, 2026 — PR `feature/04-estados-eventos` → `main` abierto
+**Última actualización:** 29 de Mayo, 2026 — Paso 7 completado ✅; Context API definida como siguiente paso (paso 8)

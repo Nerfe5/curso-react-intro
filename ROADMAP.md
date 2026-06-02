@@ -596,15 +596,7 @@ src/
     └── EmptyTodos.css
 ```
 
-### 8. Modal para Crear TODOs
-- **Objetivos:**
-  - Implementar React Portals
-  - Crear formulario de creación de TODOs
-  - Validación de formularios
-- **Conceptos:** Portals, formularios controlados
-- **Duración estimada:** 3-4 horas
-
-### 8. Context API ⏳ PENDIENTE
+### 8. Context API ✅
 
 - **Objetivos:**
   - Entender el problema de prop drilling y por qué Context lo resuelve
@@ -612,7 +604,7 @@ src/
   - Envolver la app en un `Provider` y consumir datos con `useContext`
   - Mover el estado global de `App.js` al contexto
 
-**Conceptos a aprender:**
+**Conceptos aprendidos:**
 
 **¿Qué es prop drilling?**
 Prop drilling es cuando tienes que pasar una prop por varios niveles de componentes intermedios que no la usan, solo para que llegue a quien la necesita:
@@ -626,41 +618,69 @@ App.js  →  (loading, error, todos...)
 
 Cuando la app crece, esto se vuelve difícil de mantener: cualquier cambio obliga a editar todos los componentes del medio.
 
-**`React.createContext` — crear el canal de datos global**
-`createContext` crea un objeto con dos piezas: un `Provider` (quien da los datos) y un `Consumer` (quien los recibe). El `Provider` envuelve los componentes que necesitan acceso:
+**Patrón `TodoProvider` — separar el contexto de `App.js`**
+En lugar de poner el `Provider` directamente en `App.js`, se crea un componente `TodoProvider` dedicado en su propia carpeta. Así `App.js` queda limpio y el contexto es portátil:
 
 ```jsx
-// TodoContext.js — crear el contexto
+// TodoContext/index.js — contexto + provider en un solo módulo
 const TodoContext = React.createContext();
 
-// App.js — el Provider envuelve toda la app y le da acceso al estado
-function App() {
+function TodoProvider({ children }) {
   const { item: todos, saveItem: saveTodos, loading, error } = useLocalStorage('TODOS_V1', []);
   const [searchValue, setSearchValue] = React.useState('');
 
+  const completedTodos = todos.filter(todo => !!todo.completed).length;
+  const totalTodos = todos.length;
+
+  const searchedTodos = todos.filter(todo =>
+    todo.text.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
+  const completeTodo = (text) => { ... };
+  const deleteTodo = (text) => { ... };
+
   return (
-    <TodoContext.Provider value={{ todos, saveTodos, loading, error, searchValue, setSearchValue }}>
-      <AppUI />
+    <TodoContext.Provider value={{ loading, error, completedTodos, totalTodos,
+      searchValue, setSearchValue, searchedTodos, completeTodo, deleteTodo }}>
+      {children}
     </TodoContext.Provider>
+  );
+}
+
+export { TodoContext, TodoProvider };
+```
+
+```jsx
+// App.js — ahora son solo 5 líneas útiles
+function App() {
+  return (
+    <TodoProvider>
+      <AppUI />
+    </TodoProvider>
   );
 }
 ```
 
 **`useContext` — consumir datos sin props**
-Cualquier componente dentro del `Provider` puede leer el contexto directamente, sin que nadie le pase props:
+Cualquier componente dentro del `Provider` puede leer el contexto directamente. `TodoCounter` y `TodoSearch` ya no reciben props — las leen ellos mismos:
 
 ```jsx
-// TodoItem/index.js — accede al contexto sin recibir ninguna prop
-function TodoItem({ text, completed }) {
-  const { completeTodo, deleteTodo } = React.useContext(TodoContext);
+// TodoCounter/index.js
+function TodoCounter() {
+  const { completedTodos, totalTodos } = React.useContext(TodoContext);
+  ...
+}
 
-  return (
-    <li>
-      <span onClick={() => completeTodo(text)}>✓</span>
-      <p>{text}</p>
-      <span onClick={() => deleteTodo(text)}>✕</span>
-    </li>
-  );
+// TodoSearch/index.js
+function TodoSearch() {
+  const { searchValue, setSearchValue } = React.useContext(TodoContext);
+  ...
+}
+
+// AppUI.js — solo consume lo que necesita para renderizar la lista
+function AppUI() {
+  const { loading, error, searchedTodos, completeTodo, deleteTodo } = React.useContext(TodoContext);
+  ...
 }
 ```
 
@@ -668,9 +688,40 @@ function TodoItem({ text, completed }) {
 
 | Antes (prop drilling) | Después (Context) |
 |---|---|
-| `App` → `AppUI` → `TodoList` → `TodoItem` | `App` ← `TodoItem` accede directo |
-| Cada componente intermedio recibe y reenvía props | Los intermedios no saben nada del estado global |
-| Cambiar una prop obliga a editar múltiples archivos | Un solo `Provider` centraliza todo |
+| `App` pasaba 9 props a `AppUI` | `App` no pasa ninguna prop |
+| `AppUI` recibía y reenviaba `completedTodos`, `totalTodos`, `searchValue`, `setSearchValue` | `TodoCounter` y `TodoSearch` los leen directo del contexto |
+| Cambiar una prop obligaba a editar múltiples archivos | Un solo `TodoProvider` centraliza todo el estado |
+
+**Fix de ESLint en `useLocalStorage`**
+Al agregar `itemName` al array de dependencias de `useEffect`, `initialValue` (que es `[]`) causaba un loop infinito porque se recrea en cada render. La solución fue capturarlo con `useRef`:
+
+```js
+const initialValueRef = React.useRef(initialValue);
+
+React.useEffect(() => {
+  // usa initialValueRef.current en lugar de initialValue directamente
+}, [itemName]); // itemName es seguro; initialValue queda estabilizado por el ref
+```
+
+> `useRef` devuelve un objeto cuya propiedad `.current` persiste entre renders sin provocar re-renders. Ideal para capturar el valor inicial sin que React lo detecte como dependencia cambiante.
+
+**Estructura final del proyecto**
+```
+src/
+├── App.js              ← solo monta TodoProvider + AppUI
+├── AppUI.js            ← consume contexto, renderiza la UI
+├── TodoContext/
+│   └── index.js        ← TodoContext + TodoProvider (estado, lógica, estados derivados)
+├── TodoCounter/        ← lee completedTodos/totalTodos del contexto
+├── TodoSearch/         ← lee searchValue/setSearchValue del contexto
+├── TodoList/           ← contenedor sin estado
+├── TodoItem/           ← recibe props de AppUI (componente genérico)
+├── CreateTodoButton/
+├── TodosLoading/
+├── TodosError/
+├── EmptyTodos/
+└── useLocalStorage/
+```
 
 ---
 
@@ -703,7 +754,7 @@ function TodoItem({ text, completed }) {
 |------|--------|-------|
 | Fase 1 - Fundamentos | ✅ Completada | React, JSX, Componentes, Props |
 | Fase 2 - TODO Machine | ✅ Completada | Maquetación, useState, Eventos, Filtrado |
-| Fase 3 - Avanzado | 🔄 En curso | useEffect, localStorage ✅, Skeleton loaders ✅, Context API |
+| Fase 3 - Avanzado | 🔄 En curso | useEffect, localStorage ✅, Skeleton loaders ✅, Context API ✅ |
 | Fase 4 - Deploy | ⏳ Pendiente | Modal, Portals, GitHub Pages |
 
 - **Duración total estimada:** 25-35 horas
@@ -716,8 +767,8 @@ function TodoItem({ text, completed }) {
 ## ✅ Estado Actual
 
 **Fase actual:** Fase 3 - Funcionalidades Avanzadas
-**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — Stateless vs Stateful ✅ — useEffect + loading/error states ✅ — Skeleton loaders ✅
-**Siguiente paso:** Context API — paso 8 (`createContext`, `Provider`, `useContext`, eliminar prop drilling).
+**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — Stateless vs Stateful ✅ — useEffect + loading/error states ✅ — Skeleton loaders ✅ — Context API ✅
+**Siguiente paso:** Modal para Crear TODOs — paso 9 (React Portals, formulario controlado, agregar nuevos TODOs).
 
 ---
 
@@ -729,4 +780,4 @@ function TodoItem({ text, completed }) {
 
 ---
 
-**Última actualización:** 29 de Mayo, 2026 — Paso 7 completado ✅; Context API definida como siguiente paso (paso 8)
+**Última actualización:** 2 de Junio, 2026 — Paso 8 completado ✅ (Context API); siguiente paso Modal para Crear TODOs (paso 9)

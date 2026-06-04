@@ -1,6 +1,6 @@
 # 🌿 GitFlow - Curso de Introducción a React.js
 
-Este documento define la estrategia de Git para el desarrollo ordenado del curso, asegurando que cada fase del aprendizaje esté documentada en ramas separadas.
+Este documento describe la estrategia de Git aplicada durante el desarrollo del curso, con el flujo real utilizado y el historial de ramas creadas.
 
 ---
 
@@ -9,250 +9,174 @@ Este documento define la estrategia de Git para el desarrollo ordenado del curso
 ### **Ramas Principales**
 
 #### `main`
-- **Propósito:** Código base inicial del curso
-- **Contenido:** Proyecto Create React App sin modificaciones
-- **Protección:** No hacer commits directos (excepto configuración inicial)
+- **Propósito:** Rama principal e integradora del curso
+- **Uso real:** Todas las ramas de feature se mergearon aquí vía Pull Request
+- **Protección:** No se hicieron commits directos — solo merges desde PRs
 
 #### `develop`
-- **Propósito:** Rama de desarrollo activo
-- **Contenido:** Última versión estable del curso en progreso
-- **Uso:** Base para crear ramas de feature
+- **Propósito:** Rama de desarrollo planificada originalmente
+- **Uso real:** Existe en el remoto pero no se usó como intermediaria. El flujo evolucionó a feature → PR → `main` directamente
+
+#### `gh-pages`
+- **Propósito:** Rama de deploy, gestionada automáticamente por el paquete `gh-pages`
+- **Uso:** No se toca manualmente — `npm run deploy` la actualiza sola
 
 ---
 
-## 🎯 Ramas por Fase del Curso
+## 🔄 Flujo de Trabajo Real
 
-Cada fase del ROADMAP tendrá su propia rama para mantener el historial de aprendizaje:
+El flujo aplicado en cada sección del curso fue:
 
-### **Fase 1: Fundamentos**
 ```
-feature/01-introduccion-jsx
-feature/02-primer-componente
-```
-
-### **Fase 2: TODO Machine**
-```
-feature/03-maquetacion-inicial
-feature/04-estados-eventos
-feature/05-busqueda-filtrado
+main
+ └── feature/XX-nombre     ← se crea desde main
+       ↓  (commits de trabajo)
+       ↓  git push origin feature/XX-nombre
+       ↓  Pull Request en GitHub (creado desde VSCode con la extensión GitHub Pull Requests)
+       ↓  merge a main
 ```
 
-### **Fase 3: Funcionalidades Avanzadas**
-```
-feature/06-local-storage
-feature/07-estados-carga-errores
-feature/08-modal-crear-todos
+### Paso a paso
+
+**1. Crear la rama desde `main`**
+```bash
+git checkout main
+git checkout -b feature/09-react-portals
 ```
 
-### **Fase 4: Organización y Deploy**
+**2. Trabajar con commits descriptivos**
+```bash
+git add src/Modal/ public/index.html
+git commit -m "feat: implementar React Portals para modal con toggle desde CreateTodoButton"
 ```
-feature/09-context-api
-feature/10-deploy
+
+**3. Subir la rama al remoto**
+```bash
+git push -u origin feature/09-react-portals
 ```
+
+**4. Crear el Pull Request**
+El PR se creó desde la extensión **GitHub Pull Requests** de VSCode directamente hacia `main`. No se usó `develop` como rama intermedia.
+
+**5. Mantener la rama**
+Las ramas de feature **no se eliminaron** — quedan como referencia del historial de aprendizaje.
 
 ---
 
-## 🔄 Flujo de Trabajo
+## 🎯 Ramas Creadas en el Curso
 
-### 1. **Iniciar Nueva Fase**
-```bash
-# Asegurarte de estar en develop actualizado
-git checkout develop
-git pull origin develop
+### Fase 1 — Fundamentos
+| Rama | Contenido | Estado |
+|---|---|---|
+| `feature/01-introduction-jsx` | Introducción a JSX y primer componente | ✅ Mergeada |
 
-# Crear nueva rama de feature
-git checkout -b feature/01-introduccion-jsx
-```
+### Fase 2 — TODO Machine
+| Rama | Contenido | Estado |
+|---|---|---|
+| `feature/03-maquetacion-inicial` | Estructura de componentes y CSS base | ✅ Mergeada |
+| `feature/04-estados-eventos` | useState, eventos, completar/eliminar TODOs | ✅ Mergeada |
 
-### 2. **Desarrollar en la Rama**
-```bash
-# Hacer cambios y commits descriptivos
-git add .
-git commit -m "feat: implementar componente básico de saludo"
+### Fase 3 — Funcionalidades Avanzadas
+| Rama | Contenido | Estado |
+|---|---|---|
+| `feature/07-loading-states` | useEffect, loading/error, skeleton loaders | ✅ Mergeada |
+| `feature/08-context-api` | Context API, TodoProvider, useContext | ✅ Mergeada |
 
-# Commits frecuentes con mensajes claros
-git commit -m "style: agregar estilos al componente App"
-git commit -m "docs: actualizar comentarios en App.js"
-```
-
-### 3. **Finalizar Fase**
-```bash
-# Push de la rama al repositorio remoto
-git push origin feature/01-introduccion-jsx
-
-# Merge a develop (localmente o vía Pull Request)
-git checkout develop
-git merge feature/01-introduccion-jsx
-git push origin develop
-```
-
-### 4. **Mantener la Rama para Referencia**
-**Importante:** NO eliminar las ramas de feature. Mantenerlas como referencia del progreso del curso.
+### Fase 4 — Organización y Deploy
+| Rama | Contenido | Estado |
+|---|---|---|
+| `feature/09-react-portals` | React Portals, Modal, estado openModal | ✅ Mergeada |
+| `feature/10-forms` | TodoForm controlado, addTodo, fix z-index | ✅ Mergeada |
+| `feature/11-deploy` | GitHub Pages, gh-pages, fix EmptyTodos/TodosNotFound | ✅ Mergeada |
 
 ---
 
 ## 📝 Convenciones de Commits
 
-Usar **Conventional Commits** para mensajes claros:
+Se usó **Conventional Commits** en todos los commits del curso:
 
-### Tipos de Commits
+| Prefijo | Uso | Ejemplo real del curso |
+|---|---|---|
+| `feat:` | Nueva funcionalidad | `feat: implementar Context API para eliminar prop drilling` |
+| `fix:` | Corrección de bug | `fix: diferenciar lista vacia de busqueda sin resultados` |
+| `style:` | Cambios de CSS | `style: agregar estilos base para todo-container` |
+| `refactor:` | Refactorización | `refactor: reorganizar componentes en carpetas e implementar localStorage` |
+| `docs:` | Documentación | `docs: documentar deploy GitHub Pages y fix estados vacios en ROADMAP` |
+| `chore:` | Mantenimiento | `chore: actualizar dependencias` |
 
-- `feat:` - Nueva funcionalidad
-  ```bash
-  git commit -m "feat: agregar componente TodoItem"
-  ```
-
-- `style:` - Cambios de estilos CSS
-  ```bash
-  git commit -m "style: aplicar estilos a TodoCounter"
-  ```
-
-- `refactor:` - Refactorización de código
-  ```bash
-  git commit -m "refactor: extraer lógica de búsqueda a custom hook"
-  ```
-
-- `fix:` - Corrección de bugs
-  ```bash
-  git commit -m "fix: corregir filtrado de TODOs vacíos"
-  ```
-
-- `docs:` - Documentación
-  ```bash
-  git commit -m "docs: agregar comentarios a Context API"
-  ```
-
-- `chore:` - Tareas de mantenimiento
-  ```bash
-  git commit -m "chore: actualizar dependencias"
-  ```
+> Todos los commits incluyen `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` al ser realizados con asistencia de Claude Code.
 
 ---
 
-## 🏷️ Etiquetas (Tags)
+## 🎓 Comandos Útiles
 
-Crear tags al completar cada fase importante:
-
+### Ver el historial completo del curso
 ```bash
-# Al completar Fase 1
-git tag -a v1.0-fundamentos -m "Fase 1: Fundamentos completada"
-git push origin v1.0-fundamentos
-
-# Al completar Fase 2
-git tag -a v2.0-todo-machine -m "Fase 2: TODO Machine completada"
-git push origin v2.0-todo-machine
-
-# Al completar Fase 3
-git tag -a v3.0-avanzado -m "Fase 3: Funcionalidades avanzadas completadas"
-git push origin v3.0-avanzado
-
-# Al completar Fase 4
-git tag -a v4.0-production -m "Fase 4: Deploy completado"
-git push origin v4.0-production
-```
-
----
-
-## 🎓 Comandos Útiles para el Curso
-
-### Ver Historial del Curso
-```bash
-# Ver todas las ramas
-git branch -a
-
-# Ver historial gráfico
+# Historial visual de todas las ramas
 git log --oneline --graph --all --decorate
 
-# Ver cambios entre fases
-git diff feature/01-introduccion-jsx feature/02-primer-componente
+# Ver solo los merges a main
+git log --oneline --merges main
 ```
 
-### Volver a una Fase Anterior
+### Explorar el código de una fase específica
 ```bash
-# Ver código de una fase específica
-git checkout feature/03-maquetacion-inicial
+# Ver cómo estaba el código al terminar los portales
+git checkout feature/09-react-portals
 
-# Volver a develop
-git checkout develop
+# Volver a main
+git checkout main
 ```
 
-### Comparar Progreso
+### Comparar entre fases
 ```bash
-# Ver qué cambió desde el inicio
-git diff main develop
+# Qué cambió entre la fase de Context API y los Portals
+git diff feature/08-context-api feature/09-react-portals
 
-# Ver archivos modificados en una rama
-git diff --name-only main feature/04-estados-eventos
+# Solo los archivos que cambiaron
+git diff --name-only feature/08-context-api feature/09-react-portals
 ```
 
 ---
 
-## 📊 Ejemplo de Estructura Final
+## 📊 Estructura Final Real
 
 ```
-main (código base inicial)
-  │
-  ├── develop (progreso actual)
-  │     │
-  │     ├── feature/01-introduccion-jsx ✅
-  │     ├── feature/02-primer-componente ✅
-  │     ├── feature/03-maquetacion-inicial ✅
-  │     ├── feature/04-estados-eventos ✅
-  │     ├── feature/05-busqueda-filtrado ✅
-  │     ├── feature/06-local-storage ✅
-  │     ├── feature/07-estados-carga-errores ✅
-  │     ├── feature/08-modal-crear-todos ✅
-  │     ├── feature/09-context-api ✅
-  │     └── feature/10-deploy ✅
-  │
-  └── gh-pages (deploy en GitHub Pages)
+main
+ ├── feature/01-introduction-jsx        ✅
+ ├── feature/03-maquetacion-inicial      ✅
+ ├── feature/04-estados-eventos          ✅
+ ├── feature/07-loading-states           ✅
+ ├── feature/08-context-api              ✅
+ ├── feature/09-react-portals            ✅
+ ├── feature/10-forms                    ✅
+ ├── feature/11-deploy                   ✅
+ │
+ └── gh-pages  ← generada por npm run deploy
 ```
+
+> Los números en los nombres de rama no son consecutivos porque algunas fases del ROADMAP se agruparon en una sola rama (ej: localStorage + custom hooks + organización de carpetas → `feature/04-estados-eventos`).
 
 ---
 
-## 🚀 Configuración Inicial
+## ✅ Checklist por Rama
 
-### 1. Crear Rama Develop
-```bash
-git checkout -b develop
-git push origin develop
-```
+Antes de hacer el PR de cada rama:
 
-### 2. Configurar GitHub (Opcional)
-- Proteger rama `main` (Settings → Branches → Branch protection rules)
-- Hacer `develop` la rama por defecto para PRs
-
-### 3. Preparar para Deploy
-```bash
-# Instalar gh-pages
-npm install --save-dev gh-pages
-
-# Agregar scripts en package.json
-# "predeploy": "npm run build"
-# "deploy": "gh-pages -d build"
-```
-
----
-
-## ✅ Checklist por Fase
-
-Antes de pasar a la siguiente fase:
-
-- [ ] Código funcionando sin errores
-- [ ] Commits con mensajes descriptivos
-- [ ] Rama pusheada a remoto
-- [ ] Merge a develop realizado
-- [ ] Tag creado (en fases importantes)
-- [ ] Probar que npm start funciona
+- [x] Código funcionando sin errores en `npm start`
+- [x] Commits con mensajes descriptivos en Conventional Commits
+- [x] Rama pusheada al remoto con `git push -u origin`
+- [x] ROADMAP.md actualizado con la sección correspondiente
+- [x] PR creado desde VSCode hacia `main`
 
 ---
 
 ## 📚 Recursos
 
-- [Git Flow Original](https://nvie.com/posts/a-successful-git-branching-model/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [GitHub Flow](https://guides.github.com/introduction/flow/)
+- [Extensión GitHub Pull Requests para VSCode](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github)
 
 ---
 
-**Última actualización:** Diciembre 9, 2025
+**Última actualización:** 4 de Junio, 2026 — Curso completado ✅. Todas las ramas mergeadas a `main`.

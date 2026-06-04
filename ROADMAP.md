@@ -725,26 +725,361 @@ src/
 
 ---
 
-## **Fase 4: Organización y Deploy** ⏳ PENDIENTE
+## **Fase 4: Organización y Deploy** 🔄 EN CURSO
 
-### 9. Modal para Crear TODOs
-- **Objetivos:**
-  - Implementar React Portals
-  - Crear formulario de creación de TODOs
-  - Validación de formularios
-- **Conceptos:** Portals, formularios controlados
-- **Duración estimada:** 3-4 horas
+### 9. React Portals ✅
 
-### 10. Deploy y Optimización
 - **Objetivos:**
-  - Preparar aplicación para producción
-  - Deploy en GitHub Pages
-  - Optimización de performance
-- **Tareas:**
-  - Configurar gh-pages
-  - Build de producción
-  - Testing final
-- **Duración estimada:** 2-3 horas
+  - Entender qué es un Portal y cuándo usarlo
+  - Teletransportar un componente fuera del árbol del DOM de React
+  - Gestionar el estado del modal con Context
+  - Crear un overlay con animaciones CSS
+
+**Conceptos aprendidos:**
+
+**¿Qué es un Portal?**
+Normalmente todo lo que React renderiza queda dentro del `<div id="root">` del HTML. Un Portal permite montar un componente en cualquier otro nodo del DOM, fuera de ese árbol, sin perder el contexto de React ni el sistema de eventos:
+
+```js
+// ReactDOM.createPortal(lo que renderiza, dónde lo monta)
+ReactDOM.createPortal(<div>Hola</div>, document.getElementById('modal'));
+```
+
+El componente sigue siendo "hijo" lógico de React (hereda contexto, recibe eventos) pero en el DOM real aparece en otro lugar.
+
+**¿Por qué necesitamos un Portal para el modal?**
+El problema sin Portal: si el modal está dentro de `.App`, hereda sus estilos de `overflow`, `z-index` y `position`. Esto puede hacer que el overlay no cubra toda la pantalla o que quede tapado por otros elementos. Con un Portal, el modal se monta directamente en el `<body>`, sin restricciones del árbol padre:
+
+```
+DOM sin Portal               DOM con Portal
+────────────────────         ────────────────────
+<body>                       <body>
+  <div id="root">              <div id="root">
+    <div class="App">            <div class="App">
+      ...                          ...
+      <div class="Modal">        </div>          ← Modal NO está aquí
+      </div>                   </div>
+    </div>                     <div id="modal">  ← Modal SÍ está aquí
+  </div>                         <div class="Modal"> ...
+</body>                       </body>
+```
+
+**Paso 1 — Agregar el nodo destino en `public/index.html`**
+El Portal necesita un nodo real en el HTML donde montarse. Se agrega junto al `#root`:
+
+```html
+<body>
+  <div id="root"></div>
+  <div id="modal"></div>  <!-- ← nodo destino del Portal -->
+</body>
+```
+
+**Paso 2 — Crear el componente `Modal`**
+```jsx
+// Modal/index.js
+import ReactDOM from 'react-dom';
+import './Modal.css';
+
+function Modal({ children }) {
+  return ReactDOM.createPortal(
+    <div className="ModalBackground">
+      <div className="ModalContainer">
+        {children}  {/* ← lo que sea que el padre ponga dentro de <Modal> */}
+      </div>
+    </div>,
+    document.getElementById('modal')  // ← nodo destino
+  );
+}
+```
+
+`children` hace que `Modal` sea un componente contenedor genérico — no le importa qué hay adentro, solo provee el overlay y el card.
+
+**Paso 3 — Estado `openModal` en el contexto**
+El estado que controla si el modal está abierto o cerrado vive en `TodoContext` para que tanto `CreateTodoButton` como `TodoForm` puedan leerlo y modificarlo sin prop drilling:
+
+```js
+// TodoContext/index.js
+const [openModal, setOpenModal] = React.useState(false);
+
+// se expone en el Provider junto al resto
+value={{ ..., openModal, setOpenModal }}
+```
+
+**Paso 4 — `CreateTodoButton` hace el toggle**
+El botón lee `setOpenModal` del contexto y alterna el estado. Usar `state => !state` (forma funcional) garantiza que siempre invierte el valor actual, independientemente de cuándo se ejecute:
+
+```jsx
+function CreateTodoButton() {
+  const { setOpenModal } = React.useContext(TodoContext);
+
+  return (
+    <button onClick={() => setOpenModal(state => !state)}>
+      <span>+</span>
+    </button>
+  );
+}
+```
+
+**Paso 5 — Renderizado condicional en `AppUI`**
+El Modal solo se monta cuando `openModal` es `true`. Al desmontarse, React llama a `ReactDOM.createPortal` con `null` internamente y el nodo desaparece del DOM:
+
+```jsx
+{openModal && (
+  <Modal>
+    <TodoForm />
+  </Modal>
+)}
+```
+
+**El z-index y la decisión de diseño**
+Durante la implementación se subió el `z-index` del botón a `3000` para que quedara encima del overlay (`2000`). Pero una vez que el formulario tuvo su propio botón "Cancelar", se revirtió a `1000`. La razón: el overlay existe para enfocar la atención en el formulario; dejar el botón visible por encima rompe ese foco sin aportar valor:
+
+| z-index | Elemento | Justificación |
+|---|---|---|
+| `1000` | `CreateTodoButton` | Encima de la UI normal, tapado por el overlay |
+| `2000` | `ModalBackground` | Cubre toda la pantalla, bloquea interacción con el fondo |
+
+**Animaciones CSS del modal**
+El overlay y el card tienen animaciones de entrada para suavizar la aparición:
+
+```css
+/* El fondo aparece con fade */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* El card sube con rebote (cubic-bezier con overshoot) */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+```
+
+> `backdrop-filter: blur(6px)` en el overlay da el efecto de cristal esmerilado que hace que el fondo se vea difuminado sin ocultarlo completamente.
+
+**Estructura de archivos creados**
+```
+src/
+├── Modal/
+│   ├── index.js      ← ReactDOM.createPortal apuntando a #modal
+│   └── Modal.css     ← overlay blur + animaciones fadeIn/slideUp
+```
+
+---
+
+### 10. Formulario Controlado (TodoForm) ✅
+
+- **Objetivos:**
+  - Crear un formulario controlado con estado local
+  - Manejar el evento `onSubmit` y `preventDefault`
+  - Agregar nuevos TODOs al estado global desde el formulario
+  - Deshabilitar el botón de submit cuando el input está vacío
+
+**Conceptos aprendidos:**
+
+**¿Qué es un formulario controlado?**
+En React, un formulario "controlado" es aquel donde el valor del `<input>` siempre está sincronizado con un estado de React. El estado es la fuente de verdad — no el DOM:
+
+```jsx
+// El input NO tiene "memoria" propia
+// Su valor ES el estado, y solo cambia cuando el estado cambia
+const [newTodoValue, setNewTodoValue] = React.useState('');
+
+<input
+  value={newTodoValue}                          // ← React controla el valor
+  onChange={(e) => setNewTodoValue(e.target.value)}  // ← actualiza el estado al escribir
+/>
+```
+
+Comparado con un input no controlado (donde usarías `ref` para leer el DOM), el controlado permite validar, formatear o sincronizar el valor en tiempo real.
+
+**`event.preventDefault()` en formularios**
+Por defecto, al hacer submit un formulario HTML recarga la página. En React eso destruiría el estado. `preventDefault` cancela ese comportamiento nativo:
+
+```jsx
+const onSubmit = (event) => {
+  event.preventDefault();   // ← cancela la recarga de página
+  addTodo(newTodoValue);    // ← agrega el TODO al estado global
+  setOpenModal(false);      // ← cierra el modal
+};
+
+<form onSubmit={onSubmit}>
+  ...
+  <button type="submit">Agregar</button>
+</form>
+```
+
+> Usar `type="submit"` en el botón y `onSubmit` en el `<form>` (no `onClick` en el botón) es la forma correcta. Así también funciona al presionar `Enter` en el input.
+
+**Deshabilitar el botón cuando el input está vacío**
+Se usa el atributo `disabled` de forma dinámica. `.trim()` ignora espacios en blanco — así el usuario no puede agregar un TODO con solo espacios:
+
+```jsx
+<button
+  type="submit"
+  disabled={!newTodoValue.trim()}  // ← true si está vacío o solo tiene espacios
+>
+  Agregar
+</button>
+```
+
+**`addTodo` en el contexto**
+La función para agregar un TODO vive en `TodoContext` siguiendo el mismo patrón de `completeTodo` y `deleteTodo`. Crea un nuevo array (inmutabilidad) con el TODO nuevo al final:
+
+```js
+// TodoContext/index.js
+const addTodo = (text) => {
+  const newTodos = [...todos, { text, completed: false }];
+  saveTodos(newTodos);  // persiste en localStorage y actualiza el estado
+};
+
+// se expone en el Provider
+value={{ ..., addTodo }}
+```
+
+> `[...todos, { text, completed: false }]` es la forma idiomática de agregar al final de un array sin mutarlo. Nunca `todos.push(...)` — eso muta el array original y React no detectaría el cambio.
+
+**Flujo completo de crear un TODO**
+```
+Usuario escribe en el input
+  → onChange actualiza newTodoValue (estado local del form)
+    → Usuario hace click en "Agregar" (o presiona Enter)
+      → onSubmit llama addTodo(newTodoValue)
+        → addTodo crea nuevo array y llama saveTodos
+          → saveTodos guarda en localStorage y llama setTodos
+            → React re-renderiza la lista con el nuevo TODO
+              → setOpenModal(false) cierra el modal
+```
+
+**Botón "Cancelar"**
+Cierra el modal sin agregar nada. Al llamar `setOpenModal(false)` directamente, el estado `newTodoValue` se descarta automáticamente porque el componente se desmonta:
+
+```jsx
+const onCancel = () => {
+  setOpenModal(false);  // el form se desmonta → newTodoValue desaparece
+};
+```
+
+**Estructura de archivos creados**
+```
+src/
+├── TodoForm/
+│   ├── index.js      ← formulario controlado, consume addTodo y setOpenModal del contexto
+│   └── TodoForm.css  ← estilos: input con focus ring púrpura, botones primario/cancelar
+```
+
+**Estado del contexto tras esta sección**
+```js
+// TodoContext ahora expone:
+{
+  loading, error,               // estado de carga
+  completedTodos, totalTodos,   // contadores
+  searchValue, setSearchValue,  // búsqueda
+  searchedTodos,                // lista filtrada
+  completeTodo, deleteTodo,     // acciones existentes
+  addTodo,                      // ← nuevo: agregar TODO
+  openModal, setOpenModal,      // ← nuevo: control del modal
+}
+```
+
+---
+
+### 11. Deploy en GitHub Pages ✅
+
+- **Objetivos:**
+  - Preparar la aplicación para producción
+  - Publicar en GitHub Pages con `gh-pages`
+  - Corregir bug de estados vacíos en la UI
+
+**Conceptos aprendidos:**
+
+**Fix previo al deploy — estados vacíos diferenciados**
+Antes del deploy se detectó un bug de lógica: el mensaje "¡Crea tu primer TODO!" aparecía también al buscar algo inexistente. La causa: la condición `searchedTodos.length === 0` se disparaba en dos situaciones distintas que necesitan mensajes distintos:
+
+```jsx
+// ❌ Antes: un solo caso para dos situaciones diferentes
+{(!loading && searchedTodos.length === 0) && <EmptyTodos />}
+
+// ✅ Después: cada situación tiene su propio componente
+{(!loading && totalTodos === 0) && <EmptyTodos />}
+{(!loading && totalTodos > 0 && searchedTodos.length === 0) && <TodosNotFound />}
+```
+
+| Situación | Componente | Mensaje |
+|---|---|---|
+| Sin TODOs en absoluto | `EmptyTodos` | "¡Crea tu primer TODO!" |
+| Búsqueda sin coincidencias | `TodosNotFound` | "No encontramos resultados para tu búsqueda." |
+
+**¿Qué es GitHub Pages?**
+GitHub Pages es un servicio gratuito de GitHub que publica archivos estáticos directamente desde un repositorio. Para una app de React, el flujo es: hacer el build de producción (que genera HTML/CSS/JS estático en la carpeta `build/`) y subir esa carpeta a la rama `gh-pages` del repositorio.
+
+**`gh-pages` — el paquete que automatiza el proceso**
+Sin `gh-pages`, tendrías que copiar manualmente la carpeta `build/` y hacer push a la rama `gh-pages`. El paquete lo hace en un solo comando:
+
+```bash
+npm install --save-dev gh-pages
+```
+
+**Configuración en `package.json`**
+Se necesitan dos cambios:
+
+```json
+{
+  "homepage": "https://nerfe5.github.io/curso-react-intro",
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
+  }
+}
+```
+
+- `homepage` — le dice a React cuál es la URL base de producción. Sin esto, los assets (JS, CSS, imágenes) no se cargarían correctamente porque React asumiría que la app está en la raíz `/` y no en `/curso-react-intro/`.
+- `predeploy` — script que npm ejecuta automáticamente **antes** de `deploy`. Garantiza que siempre se construye la versión más reciente antes de publicar.
+- `deploy` — ejecuta `gh-pages -d build`, que sube el contenido de la carpeta `build/` a la rama `gh-pages` del repositorio.
+
+**El comando `npm run deploy` hace todo esto:**
+```
+npm run deploy
+  → npm run predeploy    (automático)
+    → npm run build      → genera carpeta build/ optimizada
+  → gh-pages -d build   → sube build/ a la rama gh-pages de GitHub
+    → GitHub Pages sirve esos archivos en la URL configurada
+```
+
+**Resultado del build de producción**
+```
+File sizes after gzip:
+  46.7 kB  build/static/js/main.d7fc11b7.js
+  1.99 kB  build/static/css/main.b39bdd5a.css
+```
+
+> React en producción aplica minificación, tree-shaking y code-splitting. El resultado es significativamente más pequeño que el código fuente.
+
+**App publicada:** https://nerfe5.github.io/curso-react-intro
+
+**Estructura final del proyecto completo**
+```
+src/
+├── App.js                  ← monta TodoProvider + AppUI
+├── AppUI.js                ← consume contexto, renderiza toda la UI
+├── App.css
+├── index.js
+├── index.css
+├── TodoContext/            ← estado global, lógica, acciones
+├── useLocalStorage/        ← hook de persistencia
+├── Modal/                  ← Portal de React, overlay animado
+├── TodoForm/               ← formulario controlado para crear TODOs
+├── TodoCounter/            ← contador de completados/total
+├── TodoSearch/             ← buscador en tiempo real
+├── TodoList/               ← contenedor de la lista
+├── TodoItem/               ← item individual
+├── CreateTodoButton/       ← botón flotante, toggle del modal
+├── TodosLoading/           ← skeleton loader (3 instancias)
+├── TodosError/             ← mensaje de error de carga
+├── EmptyTodos/             ← lista vacía: "¡Crea tu primer TODO!"
+└── TodosNotFound/          ← búsqueda sin resultados
+```
 
 ---
 
@@ -754,21 +1089,20 @@ src/
 |------|--------|-------|
 | Fase 1 - Fundamentos | ✅ Completada | React, JSX, Componentes, Props |
 | Fase 2 - TODO Machine | ✅ Completada | Maquetación, useState, Eventos, Filtrado |
-| Fase 3 - Avanzado | 🔄 En curso | useEffect, localStorage ✅, Skeleton loaders ✅, Context API ✅ |
-| Fase 4 - Deploy | ⏳ Pendiente | Modal, Portals, GitHub Pages |
+| Fase 3 - Avanzado | ✅ Completada | useEffect, localStorage, Skeleton loaders, Context API |
+| Fase 4 - Deploy | ✅ Completada | React Portals, Formulario controlado, GitHub Pages |
 
 - **Duración total estimada:** 25-35 horas
 - **Nivel:** Principiante a Intermedio
-- **Tecnologías:** React 18, CSS3, LocalStorage
-- **Resultado final:** Aplicación TODO completa y deployada
+- **Tecnologías:** React 18, CSS3, LocalStorage, GitHub Pages
+- **Resultado final:** Aplicación TODO completa y deployada en https://nerfe5.github.io/curso-react-intro
 
 ---
 
 ## ✅ Estado Actual
 
-**Fase actual:** Fase 3 - Funcionalidades Avanzadas
-**Progreso:** Fases 1 y 2 completadas ✅ — localStorage ✅ — Custom Hook ✅ — Organización de carpetas ✅ — Stateless vs Stateful ✅ — useEffect + loading/error states ✅ — Skeleton loaders ✅ — Context API ✅
-**Siguiente paso:** Modal para Crear TODOs — paso 9 (React Portals, formulario controlado, agregar nuevos TODOs).
+**Estado:** Curso completado ✅
+**Progreso:** Todas las fases completadas — app publicada en producción.
 
 ---
 
@@ -780,4 +1114,4 @@ src/
 
 ---
 
-**Última actualización:** 2 de Junio, 2026 — Paso 8 completado ✅ (Context API); siguiente paso Modal para Crear TODOs (paso 9)
+**Última actualización:** 4 de Junio, 2026 — Curso completado ✅. App publicada en https://nerfe5.github.io/curso-react-intro

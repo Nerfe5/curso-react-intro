@@ -9,6 +9,7 @@ import { TodosError } from './TodosError';
 import { EmptyTodos } from './EmptyTodos';
 import { CreateTodoButton } from './CreateTodoButton';
 import { Modal } from './Modal';
+import { TodoForm } from './TodoForm';
 
 function AppUI() {
   const {
@@ -47,7 +48,7 @@ function AppUI() {
 
       {openModal && (
         <Modal>
-          <p>Aquí irá el formulario para crear un nuevo TODO</p>
+          <TodoForm />
         </Modal>
       )}
 

@@ -985,18 +985,101 @@ src/
 
 ---
 
-### 11. Deploy y Optimización
+### 11. Deploy en GitHub Pages ✅
+
 - **Objetivos:**
-  - Preparar aplicación para producción
-  - Deploy en GitHub Pages
-  - Optimización de performance
-- **Tareas:**
-  - Instalar y configurar `gh-pages`
-  - Agregar `homepage` en `package.json`
-  - Scripts `predeploy` y `deploy`
-  - Build de producción
-  - Testing final
-- **Duración estimada:** 2-3 horas
+  - Preparar la aplicación para producción
+  - Publicar en GitHub Pages con `gh-pages`
+  - Corregir bug de estados vacíos en la UI
+
+**Conceptos aprendidos:**
+
+**Fix previo al deploy — estados vacíos diferenciados**
+Antes del deploy se detectó un bug de lógica: el mensaje "¡Crea tu primer TODO!" aparecía también al buscar algo inexistente. La causa: la condición `searchedTodos.length === 0` se disparaba en dos situaciones distintas que necesitan mensajes distintos:
+
+```jsx
+// ❌ Antes: un solo caso para dos situaciones diferentes
+{(!loading && searchedTodos.length === 0) && <EmptyTodos />}
+
+// ✅ Después: cada situación tiene su propio componente
+{(!loading && totalTodos === 0) && <EmptyTodos />}
+{(!loading && totalTodos > 0 && searchedTodos.length === 0) && <TodosNotFound />}
+```
+
+| Situación | Componente | Mensaje |
+|---|---|---|
+| Sin TODOs en absoluto | `EmptyTodos` | "¡Crea tu primer TODO!" |
+| Búsqueda sin coincidencias | `TodosNotFound` | "No encontramos resultados para tu búsqueda." |
+
+**¿Qué es GitHub Pages?**
+GitHub Pages es un servicio gratuito de GitHub que publica archivos estáticos directamente desde un repositorio. Para una app de React, el flujo es: hacer el build de producción (que genera HTML/CSS/JS estático en la carpeta `build/`) y subir esa carpeta a la rama `gh-pages` del repositorio.
+
+**`gh-pages` — el paquete que automatiza el proceso**
+Sin `gh-pages`, tendrías que copiar manualmente la carpeta `build/` y hacer push a la rama `gh-pages`. El paquete lo hace en un solo comando:
+
+```bash
+npm install --save-dev gh-pages
+```
+
+**Configuración en `package.json`**
+Se necesitan dos cambios:
+
+```json
+{
+  "homepage": "https://nerfe5.github.io/curso-react-intro",
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
+  }
+}
+```
+
+- `homepage` — le dice a React cuál es la URL base de producción. Sin esto, los assets (JS, CSS, imágenes) no se cargarían correctamente porque React asumiría que la app está en la raíz `/` y no en `/curso-react-intro/`.
+- `predeploy` — script que npm ejecuta automáticamente **antes** de `deploy`. Garantiza que siempre se construye la versión más reciente antes de publicar.
+- `deploy` — ejecuta `gh-pages -d build`, que sube el contenido de la carpeta `build/` a la rama `gh-pages` del repositorio.
+
+**El comando `npm run deploy` hace todo esto:**
+```
+npm run deploy
+  → npm run predeploy    (automático)
+    → npm run build      → genera carpeta build/ optimizada
+  → gh-pages -d build   → sube build/ a la rama gh-pages de GitHub
+    → GitHub Pages sirve esos archivos en la URL configurada
+```
+
+**Resultado del build de producción**
+```
+File sizes after gzip:
+  46.7 kB  build/static/js/main.d7fc11b7.js
+  1.99 kB  build/static/css/main.b39bdd5a.css
+```
+
+> React en producción aplica minificación, tree-shaking y code-splitting. El resultado es significativamente más pequeño que el código fuente.
+
+**App publicada:** https://nerfe5.github.io/curso-react-intro
+
+**Estructura final del proyecto completo**
+```
+src/
+├── App.js                  ← monta TodoProvider + AppUI
+├── AppUI.js                ← consume contexto, renderiza toda la UI
+├── App.css
+├── index.js
+├── index.css
+├── TodoContext/            ← estado global, lógica, acciones
+├── useLocalStorage/        ← hook de persistencia
+├── Modal/                  ← Portal de React, overlay animado
+├── TodoForm/               ← formulario controlado para crear TODOs
+├── TodoCounter/            ← contador de completados/total
+├── TodoSearch/             ← buscador en tiempo real
+├── TodoList/               ← contenedor de la lista
+├── TodoItem/               ← item individual
+├── CreateTodoButton/       ← botón flotante, toggle del modal
+├── TodosLoading/           ← skeleton loader (3 instancias)
+├── TodosError/             ← mensaje de error de carga
+├── EmptyTodos/             ← lista vacía: "¡Crea tu primer TODO!"
+└── TodosNotFound/          ← búsqueda sin resultados
+```
 
 ---
 
@@ -1007,20 +1090,19 @@ src/
 | Fase 1 - Fundamentos | ✅ Completada | React, JSX, Componentes, Props |
 | Fase 2 - TODO Machine | ✅ Completada | Maquetación, useState, Eventos, Filtrado |
 | Fase 3 - Avanzado | ✅ Completada | useEffect, localStorage, Skeleton loaders, Context API |
-| Fase 4 - Deploy | 🔄 En curso | React Portals ✅, Formulario controlado ✅, GitHub Pages |
+| Fase 4 - Deploy | ✅ Completada | React Portals, Formulario controlado, GitHub Pages |
 
 - **Duración total estimada:** 25-35 horas
 - **Nivel:** Principiante a Intermedio
-- **Tecnologías:** React 18, CSS3, LocalStorage
-- **Resultado final:** Aplicación TODO completa y deployada
+- **Tecnologías:** React 18, CSS3, LocalStorage, GitHub Pages
+- **Resultado final:** Aplicación TODO completa y deployada en https://nerfe5.github.io/curso-react-intro
 
 ---
 
 ## ✅ Estado Actual
 
-**Fase actual:** Fase 4 - Organización y Deploy
-**Progreso:** Fases 1, 2 y 3 completadas ✅ — React Portals ✅ — Formulario controlado ✅
-**Siguiente paso:** Deploy en GitHub Pages — paso 11 (configurar `gh-pages`, build de producción).
+**Estado:** Curso completado ✅
+**Progreso:** Todas las fases completadas — app publicada en producción.
 
 ---
 
@@ -1032,4 +1114,4 @@ src/
 
 ---
 
-**Última actualización:** 4 de Junio, 2026 — Pasos 9 y 10 completados ✅ (React Portals + Formulario controlado); siguiente paso Deploy en GitHub Pages (paso 11)
+**Última actualización:** 4 de Junio, 2026 — Curso completado ✅. App publicada en https://nerfe5.github.io/curso-react-intro

@@ -10,11 +10,13 @@ import { EmptyTodos } from './EmptyTodos';
 import { CreateTodoButton } from './CreateTodoButton';
 import { Modal } from './Modal';
 import { TodoForm } from './TodoForm';
+import { TodosNotFound } from './TodosNotFound';
 
 function AppUI() {
   const {
     loading,
     error,
+    totalTodos,
     searchedTodos,
     completeTodo,
     deleteTodo,
@@ -34,7 +36,8 @@ function AppUI() {
           </>
         )}
         {error && <TodosError />}
-        {(!loading && searchedTodos.length === 0) && <EmptyTodos />}
+        {(!loading && totalTodos === 0) && <EmptyTodos />}
+        {(!loading && totalTodos > 0 && searchedTodos.length === 0) && <TodosNotFound />}
         {searchedTodos.map(todo => (
           <TodoItem
             key={todo.text}
